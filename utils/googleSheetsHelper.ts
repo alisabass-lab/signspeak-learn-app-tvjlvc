@@ -162,7 +162,7 @@ export async function testGoogleSheetsConnection(
     console.log('Sheet metadata retrieved successfully:', data.properties?.title);
 
     // Test 2: Try to fetch actual data
-    const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:B?key=${apiKey}`;
+    const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/SignLanguage_Database!A:B?key=${apiKey}`;
     console.log('Fetching data from:', dataUrl);
     
     const dataResponse = await fetch(dataUrl);
@@ -185,7 +185,7 @@ export async function testGoogleSheetsConnection(
         message: 'Failed to fetch sheet data',
         details: errorData,
         suggestions: [
-          'Make sure the sheet is named "Sheet1"',
+          'Make sure the sheet is named "SignLanguage_Database"',
           'Verify columns A and B exist',
           'Check if the sheet has any data',
         ],
@@ -244,8 +244,8 @@ export async function fetchVideoFromSheet(
     console.log('Sheet ID:', sheetId);
     console.log('API Key:', apiKey.substring(0, 10) + '...');
     
-    // Use the correct range format: Sheet1!A:B
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:B?key=${apiKey}`;
+    // Use the correct range format: SignLanguage_Database!A:B
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/SignLanguage_Database!A:B?key=${apiKey}`;
     console.log('Request URL:', url);
     
     const response = await fetch(url);
@@ -402,7 +402,7 @@ export async function fetchAllVideos(
 ): Promise<VideoData[]> {
   try {
     const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:B?key=${apiKey}`
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/SignLanguage_Database!A:B?key=${apiKey}`
     );
 
     if (!response.ok) {
