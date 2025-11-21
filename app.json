@@ -1,8 +1,7 @@
-
 {
   "expo": {
-    "name": "Sign Language Helper",
-    "slug": "sign-language-helper",
+    "name": "SignSpeak Learn",
+    "slug": "SignSpeak Learn",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -56,5 +55,6 @@
     "extra": {
       "router": {}
     }
-  }
+  },
+  "scheme": "SignSpeak Learn"
 }

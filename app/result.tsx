@@ -16,7 +16,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useEvent } from "expo";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import { fetchVideoFromSheet } from "@/utils/googleSheetsHelper";
+import { fetchVideoFromSheet, testGoogleSheetsConnection } from "@/utils/googleSheetsHelper";
 
 export default function ResultScreen() {
   const router = useRouter();
@@ -28,9 +28,30 @@ export default function ResultScreen() {
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
 
   const SHEET_ID = '1pwiLjwOjnqRtEQsonVWtVt8hAMSF0qLZmY0zTlJyKc0';
   const API_KEY = 'AIzaSyAniuVYPSTBKg9VCTLpVDp7azdmD4DXdQM';
+
+  const runDiagnostics = async () => {
+    console.log('Running diagnostics...');
+    const result = await testGoogleSheetsConnection(SHEET_ID, API_KEY);
+    setDiagnosticInfo(result);
+    
+    if (result.success) {
+      Alert.alert(
+        'Connection Successful! ✅',
+        result.message + '\n\nDetails:\n' + JSON.stringify(result.details, null, 2),
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert(
+        'Connection Failed ❌',
+        result.message + '\n\nSuggestions:\n' + (result.suggestions?.join('\n') || 'No suggestions'),
+        [{ text: 'OK' }]
+      );
+    }
+  };
 
   const fetchVideo = useCallback(async () => {
     try {
@@ -64,19 +85,19 @@ export default function ResultScreen() {
       let errorTypeValue = 'UNKNOWN';
       
       if (err.message === 'ACCESS_DENIED') {
-        errorMessage = 'Access denied to Google Sheet';
+        errorMessage = 'Access denied. Please check that the Google Sheet is publicly accessible and the API key is valid.';
         errorTypeValue = 'ACCESS_DENIED';
       } else if (err.message === 'SHEET_NOT_FOUND') {
-        errorMessage = 'Google Sheet not found';
+        errorMessage = 'Google Sheet not found. Please verify the Sheet ID is correct.';
         errorTypeValue = 'SHEET_NOT_FOUND';
       } else if (err.message === 'INVALID_REQUEST') {
-        errorMessage = 'Invalid API request';
+        errorMessage = 'Invalid API request. Please check the API configuration.';
         errorTypeValue = 'INVALID_REQUEST';
       } else if (err.message === 'EMPTY_SHEET') {
-        errorMessage = 'The Google Sheet is empty';
+        errorMessage = 'The Google Sheet is empty or has no data rows.';
         errorTypeValue = 'EMPTY_SHEET';
       } else if (err.message === 'EMPTY_VIDEO_URL') {
-        errorMessage = `Video URL not found for "${word}"`;
+        errorMessage = `Video URL not found for "${word}". Please add a video URL in the Google Sheet.`;
         errorTypeValue = 'EMPTY_VIDEO_URL';
       } else if (err.message && err.message.startsWith('API_ERROR_')) {
         errorMessage = `API Error: ${err.message.replace('API_ERROR_', '')}`;
@@ -84,7 +105,7 @@ export default function ResultScreen() {
       } else if (err.message) {
         errorMessage = err.message;
       } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        errorMessage = 'No internet connection';
+        errorMessage = 'No internet connection. Please check your network.';
         errorTypeValue = 'NO_INTERNET';
       }
       
@@ -106,7 +127,6 @@ export default function ResultScreen() {
     }
   });
 
-  // Listen for video player errors
   useEffect(() => {
     if (!player) return;
 
@@ -115,7 +135,6 @@ export default function ResultScreen() {
       setVideoError('Failed to play video. The video format may not be supported or the file may be inaccessible.');
     };
 
-    // Note: expo-video doesn't have a direct error event, but we can monitor status
     const checkPlayerStatus = setInterval(() => {
       if (videoUrl && player.status === 'error') {
         errorListener({ message: 'Video playback error' });
@@ -211,6 +230,22 @@ export default function ResultScreen() {
 
           <TouchableOpacity
             style={[styles.actionButton, styles.secondaryActionButton]}
+            onPress={runDiagnostics}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              ios_icon_name="stethoscope"
+              android_material_icon_name="bug_report"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.actionButtonText, styles.secondaryActionButtonText]}>
+              Run Diagnostics
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.secondaryActionButton]}
             onPress={openSetupGuide}
             activeOpacity={0.7}
           >
@@ -241,6 +276,21 @@ export default function ResultScreen() {
             <Text style={styles.infoBoxLabel}>Current Sheet ID:</Text>
             <Text style={styles.infoBoxValue}>{SHEET_ID}</Text>
           </View>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.secondaryActionButton]}
+            onPress={runDiagnostics}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              ios_icon_name="stethoscope"
+              android_material_icon_name="bug_report"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.actionButtonText, styles.secondaryActionButtonText]}>
+              Run Diagnostics
+            </Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -254,11 +304,44 @@ export default function ResultScreen() {
               The word &quot;{word}&quot; was not found in the Google Sheet. Try a different word or add it to the sheet.
             </Text>
           </View>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.secondaryActionButton]}
+            onPress={runDiagnostics}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              ios_icon_name="stethoscope"
+              android_material_icon_name="bug_report"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.actionButtonText, styles.secondaryActionButtonText]}>
+              Check Connection
+            </Text>
+          </TouchableOpacity>
         </View>
       );
     }
 
-    return null;
+    return (
+      <View style={styles.errorDetailsContainer}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.secondaryActionButton]}
+          onPress={runDiagnostics}
+          activeOpacity={0.7}
+        >
+          <IconSymbol
+            ios_icon_name="stethoscope"
+            android_material_icon_name="bug_report"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={[styles.actionButtonText, styles.secondaryActionButtonText]}>
+            Run Diagnostics
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   return (
@@ -277,7 +360,18 @@ export default function ResultScreen() {
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sign Language</Text>
-        <View style={{ width: 48 }} />
+        <TouchableOpacity
+          style={styles.diagnosticButton}
+          onPress={runDiagnostics}
+          activeOpacity={0.7}
+        >
+          <IconSymbol
+            ios_icon_name="stethoscope"
+            android_material_icon_name="bug_report"
+            size={24}
+            color={colors.text}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -445,6 +539,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: colors.secondary,
+  },
+  diagnosticButton: {
     padding: 8,
     borderRadius: 12,
     backgroundColor: colors.secondary,

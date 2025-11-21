@@ -62,6 +62,170 @@ export interface VideoData {
   videoUrl: string;
 }
 
+export interface DiagnosticResult {
+  success: boolean;
+  message: string;
+  details?: any;
+  suggestions?: string[];
+}
+
+/**
+ * Tests the Google Sheets API connection
+ * @param sheetId - The Google Sheet ID
+ * @param apiKey - The Google API key
+ * @returns Diagnostic result with details
+ */
+export async function testGoogleSheetsConnection(
+  sheetId: string,
+  apiKey: string
+): Promise<DiagnosticResult> {
+  try {
+    console.log('=== TESTING GOOGLE SHEETS CONNECTION ===');
+    console.log('Sheet ID:', sheetId);
+    console.log('API Key:', apiKey.substring(0, 10) + '...');
+
+    // Test 1: Check if we can reach Google Sheets API
+    const testUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?key=${apiKey}`;
+    console.log('Test URL:', testUrl);
+
+    const response = await fetch(testUrl);
+    const responseText = await response.text();
+    
+    console.log('Response Status:', response.status);
+    console.log('Response Headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
+    console.log('Response Body:', responseText);
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+        errorData = { message: responseText };
+      }
+
+      const suggestions: string[] = [];
+
+      if (response.status === 403) {
+        suggestions.push('Make sure the Google Sheet is set to "Anyone with the link can view"');
+        suggestions.push('Verify the API key has Google Sheets API enabled');
+        suggestions.push('Check if the API key has any restrictions that might block access');
+        
+        return {
+          success: false,
+          message: 'Access Denied (403)',
+          details: errorData,
+          suggestions,
+        };
+      } else if (response.status === 404) {
+        suggestions.push('Verify the Sheet ID is correct');
+        suggestions.push('Make sure the Google Sheet exists and is not deleted');
+        suggestions.push('Check if the sheet URL is: https://docs.google.com/spreadsheets/d/' + sheetId);
+        
+        return {
+          success: false,
+          message: 'Sheet Not Found (404)',
+          details: errorData,
+          suggestions,
+        };
+      } else if (response.status === 400) {
+        suggestions.push('The API request format may be incorrect');
+        suggestions.push('Verify the API key is valid');
+        
+        return {
+          success: false,
+          message: 'Bad Request (400)',
+          details: errorData,
+          suggestions,
+        };
+      } else if (response.status === 429) {
+        suggestions.push('Too many requests - wait a moment and try again');
+        suggestions.push('Consider implementing rate limiting in your app');
+        
+        return {
+          success: false,
+          message: 'Rate Limited (429)',
+          details: errorData,
+          suggestions,
+        };
+      } else {
+        return {
+          success: false,
+          message: `API Error (${response.status})`,
+          details: errorData,
+          suggestions: ['Check the error details for more information'],
+        };
+      }
+    }
+
+    const data = JSON.parse(responseText);
+    console.log('Sheet metadata retrieved successfully:', data.properties?.title);
+
+    // Test 2: Try to fetch actual data
+    const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:B?key=${apiKey}`;
+    console.log('Fetching data from:', dataUrl);
+    
+    const dataResponse = await fetch(dataUrl);
+    const dataText = await dataResponse.text();
+    
+    console.log('Data Response Status:', dataResponse.status);
+    console.log('Data Response Body:', dataText);
+
+    if (!dataResponse.ok) {
+      let errorData;
+      try {
+        errorData = JSON.parse(dataText);
+      } catch (e) {
+        console.error('Failed to parse data error response:', e);
+        errorData = { message: dataText };
+      }
+
+      return {
+        success: false,
+        message: 'Failed to fetch sheet data',
+        details: errorData,
+        suggestions: [
+          'Make sure the sheet is named "Sheet1"',
+          'Verify columns A and B exist',
+          'Check if the sheet has any data',
+        ],
+      };
+    }
+
+    const sheetData = JSON.parse(dataText);
+    const rowCount = sheetData.values?.length || 0;
+
+    console.log('Successfully fetched data. Row count:', rowCount);
+
+    return {
+      success: true,
+      message: `Connection successful! Found ${rowCount} rows in the sheet.`,
+      details: {
+        sheetTitle: data.properties?.title,
+        rowCount,
+        sampleData: sheetData.values?.slice(0, 3),
+      },
+    };
+
+  } catch (error: any) {
+    console.error('Connection test error:', error);
+    
+    return {
+      success: false,
+      message: 'Network or connection error',
+      details: {
+        error: error.message,
+        stack: error.stack,
+      },
+      suggestions: [
+        'Check your internet connection',
+        'Make sure you can access https://sheets.googleapis.com',
+        'Try disabling any VPN or proxy',
+      ],
+    };
+  }
+}
+
 /**
  * Fetches a video URL from Google Sheets based on the word
  * @param word - The word to search for
@@ -75,64 +239,103 @@ export async function fetchVideoFromSheet(
   apiKey: string
 ): Promise<string | null> {
   try {
-    console.log('Fetching from Google Sheets:', { word, sheetId });
+    console.log('=== FETCHING VIDEO FROM GOOGLE SHEETS ===');
+    console.log('Word:', word);
+    console.log('Sheet ID:', sheetId);
+    console.log('API Key:', apiKey.substring(0, 10) + '...');
     
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1?key=${apiKey}`;
+    // Use the correct range format: Sheet1!A:B
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:B?key=${apiKey}`;
     console.log('Request URL:', url);
     
     const response = await fetch(url);
+    const responseText = await response.text();
+
+    console.log('Response Status:', response.status);
+    console.log('Response Status Text:', response.statusText);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Google Sheets API error:', response.status, errorText);
+      console.error('API Error Response:', responseText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+        console.error('Parsed Error Data:', JSON.stringify(errorData, null, 2));
+      } catch (e) {
+        console.error('Could not parse error response as JSON');
+        errorData = { message: responseText };
+      }
       
       if (response.status === 403) {
+        console.error('403 Forbidden - Sheet may not be public or API key lacks permissions');
         throw new Error('ACCESS_DENIED');
       } else if (response.status === 404) {
+        console.error('404 Not Found - Sheet ID may be incorrect');
         throw new Error('SHEET_NOT_FOUND');
       } else if (response.status === 400) {
+        console.error('400 Bad Request - Request format may be incorrect');
         throw new Error('INVALID_REQUEST');
       } else {
+        console.error(`${response.status} Error - Unexpected API error`);
         throw new Error(`API_ERROR_${response.status}`);
       }
     }
 
-    const data = await response.json();
-    console.log('Google Sheets response:', data);
+    const data = JSON.parse(responseText);
+    console.log('Successfully fetched data from Google Sheets');
+    console.log('Response data keys:', Object.keys(data));
     
     const rows = data.values || [];
+    console.log('Total rows:', rows.length);
     
     if (rows.length === 0) {
-      console.error('Google Sheet is empty');
+      console.error('Google Sheet is empty - no data found');
+      throw new Error('EMPTY_SHEET');
+    }
+
+    if (rows.length === 1) {
+      console.warn('Only header row found - no data rows');
       throw new Error('EMPTY_SHEET');
     }
     
     const searchWord = word.toLowerCase().trim();
+    console.log(`Searching for word: "${searchWord}"`);
 
-    console.log(`Searching for word: "${searchWord}" in ${rows.length} rows`);
+    // Log first few rows for debugging
+    console.log('First 3 rows:', JSON.stringify(rows.slice(0, 3), null, 2));
 
     // Search for the word (skip header row)
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      if (row[0] && row[0].toLowerCase().trim() === searchWord) {
-        let videoUrl = row[1];
+      
+      if (!row || row.length === 0) {
+        console.log(`Row ${i}: Empty row, skipping`);
+        continue;
+      }
+
+      const rowWord = row[0]?.toString().toLowerCase().trim();
+      console.log(`Row ${i}: Comparing "${rowWord}" with "${searchWord}"`);
+      
+      if (rowWord === searchWord) {
+        let videoUrl = row[1]?.toString();
         
-        if (!videoUrl) {
-          console.error('Video URL is empty for word:', searchWord);
+        if (!videoUrl || videoUrl.trim() === '') {
+          console.error(`Row ${i}: Video URL is empty for word "${searchWord}"`);
           throw new Error('EMPTY_VIDEO_URL');
         }
         
-        console.log('Found matching word at row', i, ':', videoUrl);
+        console.log(`Row ${i}: MATCH FOUND! Video URL:`, videoUrl);
         
         // Convert Google Drive link to streamable format
-        if (videoUrl && videoUrl.includes('drive.google.com')) {
+        if (videoUrl.includes('drive.google.com')) {
           const fileIdMatch = videoUrl.match(/\/d\/([^/]+)/);
           if (fileIdMatch) {
             const fileId = fileIdMatch[1];
-            // Try multiple Google Drive URL formats for better compatibility
-            // Format 1: Direct preview (works best for streaming)
+            const originalUrl = videoUrl;
             videoUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-            console.log('Converted to Google Drive streaming link:', videoUrl);
+            console.log('Converted Google Drive URL:');
+            console.log('  Original:', originalUrl);
+            console.log('  Converted:', videoUrl);
           } else {
             console.warn('Could not extract file ID from Google Drive URL:', videoUrl);
           }
@@ -143,9 +346,13 @@ export async function fetchVideoFromSheet(
     }
 
     console.log('No matching word found in sheet');
+    console.log('Available words:', rows.slice(1).map(r => r[0]).filter(Boolean).join(', '));
     return null;
-  } catch (error) {
-    console.error('Error fetching video from sheet:', error);
+  } catch (error: any) {
+    console.error('=== ERROR FETCHING VIDEO ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     throw error;
   }
 }
@@ -160,7 +367,6 @@ export function convertDriveUrlToDirectLink(driveUrl: string): string {
     const fileIdMatch = driveUrl.match(/\/d\/([^/]+)/);
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
-      // Use the preview format which works better for video streaming
       return `https://drive.google.com/uc?export=view&id=${fileId}`;
     }
   }
@@ -196,7 +402,7 @@ export async function fetchAllVideos(
 ): Promise<VideoData[]> {
   try {
     const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1?key=${apiKey}`
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:B?key=${apiKey}`
     );
 
     if (!response.ok) {
