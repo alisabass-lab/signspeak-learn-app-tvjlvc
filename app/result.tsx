@@ -9,6 +9,7 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -25,6 +26,7 @@ export default function ResultScreen() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
 
   const SHEET_ID = '1pwiLjwOjnqRtEQsonVWtVt8hAMSF0qLZmY0zTlJyKc0';
@@ -34,12 +36,14 @@ export default function ResultScreen() {
     try {
       setLoading(true);
       setError(null);
+      setErrorType(null);
       setVideoError(null);
 
       console.log('Fetching video for word:', word);
       
       if (!word || word.trim() === '') {
         setError('Please enter a valid word.');
+        setErrorType('INVALID_INPUT');
         setLoading(false);
         return;
       }
@@ -51,19 +55,41 @@ export default function ResultScreen() {
         setVideoUrl(url);
       } else {
         setError(`No sign language video found for "${word}".`);
+        setErrorType('WORD_NOT_FOUND');
       }
     } catch (err: any) {
       console.error('Error fetching video:', err);
       
       let errorMessage = 'Failed to load video.';
+      let errorTypeValue = 'UNKNOWN';
       
-      if (err.message) {
+      if (err.message === 'ACCESS_DENIED') {
+        errorMessage = 'Access denied to Google Sheet';
+        errorTypeValue = 'ACCESS_DENIED';
+      } else if (err.message === 'SHEET_NOT_FOUND') {
+        errorMessage = 'Google Sheet not found';
+        errorTypeValue = 'SHEET_NOT_FOUND';
+      } else if (err.message === 'INVALID_REQUEST') {
+        errorMessage = 'Invalid API request';
+        errorTypeValue = 'INVALID_REQUEST';
+      } else if (err.message === 'EMPTY_SHEET') {
+        errorMessage = 'The Google Sheet is empty';
+        errorTypeValue = 'EMPTY_SHEET';
+      } else if (err.message === 'EMPTY_VIDEO_URL') {
+        errorMessage = `Video URL not found for "${word}"`;
+        errorTypeValue = 'EMPTY_VIDEO_URL';
+      } else if (err.message && err.message.startsWith('API_ERROR_')) {
+        errorMessage = `API Error: ${err.message.replace('API_ERROR_', '')}`;
+        errorTypeValue = 'API_ERROR';
+      } else if (err.message) {
         errorMessage = err.message;
-      } else if (!navigator.onLine) {
-        errorMessage = 'No internet connection. Please check your network and try again.';
+      } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        errorMessage = 'No internet connection';
+        errorTypeValue = 'NO_INTERNET';
       }
       
       setError(errorMessage);
+      setErrorType(errorTypeValue);
     } finally {
       setLoading(false);
     }
@@ -126,6 +152,115 @@ export default function ResultScreen() {
     fetchVideo();
   };
 
+  const openGoogleSheet = () => {
+    Linking.openURL(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`);
+  };
+
+  const openSetupGuide = () => {
+    router.push('/setup-info');
+  };
+
+  const renderErrorDetails = () => {
+    if (errorType === 'ACCESS_DENIED') {
+      return (
+        <View style={styles.errorDetailsContainer}>
+          <View style={styles.errorDetailCard}>
+            <Text style={styles.errorDetailTitle}>Why am I seeing this error?</Text>
+            <Text style={styles.errorDetailText}>
+              The Google Sheet is not publicly accessible or the API key doesn&apos;t have permission to access it.
+            </Text>
+          </View>
+
+          <View style={styles.errorDetailCard}>
+            <Text style={styles.errorDetailTitle}>How to fix:</Text>
+            <View style={styles.stepContainer}>
+              <Text style={styles.stepNumber}>1.</Text>
+              <Text style={styles.stepText}>Open the Google Sheet</Text>
+            </View>
+            <View style={styles.stepContainer}>
+              <Text style={styles.stepNumber}>2.</Text>
+              <Text style={styles.stepText}>Click the &quot;Share&quot; button (top right)</Text>
+            </View>
+            <View style={styles.stepContainer}>
+              <Text style={styles.stepNumber}>3.</Text>
+              <Text style={styles.stepText}>Under &quot;General access&quot;, select &quot;Anyone with the link&quot;</Text>
+            </View>
+            <View style={styles.stepContainer}>
+              <Text style={styles.stepNumber}>4.</Text>
+              <Text style={styles.stepText}>Make sure it&apos;s set to &quot;Viewer&quot;</Text>
+            </View>
+            <View style={styles.stepContainer}>
+              <Text style={styles.stepNumber}>5.</Text>
+              <Text style={styles.stepText}>Click &quot;Done&quot; and try again</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={openGoogleSheet}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              ios_icon_name="link"
+              android_material_icon_name="link"
+              size={20}
+              color={colors.card}
+            />
+            <Text style={styles.actionButtonText}>Open Google Sheet</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.secondaryActionButton]}
+            onPress={openSetupGuide}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              ios_icon_name="book.fill"
+              android_material_icon_name="menu_book"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={[styles.actionButtonText, styles.secondaryActionButtonText]}>
+              View Setup Guide
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (errorType === 'SHEET_NOT_FOUND') {
+      return (
+        <View style={styles.errorDetailsContainer}>
+          <View style={styles.errorDetailCard}>
+            <Text style={styles.errorDetailTitle}>Sheet not found</Text>
+            <Text style={styles.errorDetailText}>
+              The Google Sheet ID may be incorrect or the sheet may have been deleted.
+            </Text>
+          </View>
+          <View style={styles.infoBox}>
+            <Text style={styles.infoBoxLabel}>Current Sheet ID:</Text>
+            <Text style={styles.infoBoxValue}>{SHEET_ID}</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (errorType === 'WORD_NOT_FOUND') {
+      return (
+        <View style={styles.errorDetailsContainer}>
+          <View style={styles.errorDetailCard}>
+            <Text style={styles.errorDetailTitle}>Word not in database</Text>
+            <Text style={styles.errorDetailText}>
+              The word &quot;{word}&quot; was not found in the Google Sheet. Try a different word or add it to the sheet.
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
       <View style={styles.header}>
@@ -173,9 +308,9 @@ export default function ResultScreen() {
               />
             </View>
             <Text style={styles.errorText}>{error}</Text>
-            <Text style={styles.errorSubtext}>
-              Please try another word or check your internet connection.
-            </Text>
+            
+            {renderErrorDetails()}
+            
             <TouchableOpacity
               style={styles.retryButton}
               onPress={handleRetry}
@@ -189,16 +324,6 @@ export default function ResultScreen() {
               />
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
-            
-            <View style={styles.troubleshootBox}>
-              <Text style={styles.troubleshootTitle}>Troubleshooting Tips:</Text>
-              <Text style={styles.troubleshootText}>
-                • Check your internet connection{'\n'}
-                • Verify the word exists in the database{'\n'}
-                • Ensure Google Sheet is publicly accessible{'\n'}
-                • For Google Drive videos, make sure sharing is set to &quot;Anyone with the link&quot;
-              </Text>
-            </View>
           </View>
         )}
 
@@ -409,12 +534,90 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
-  errorSubtext: {
-    marginTop: 8,
+  errorDetailsContainer: {
+    width: '100%',
+    marginTop: 20,
+  },
+  errorDetailCard: {
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  errorDetailTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  errorDetailText: {
     fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  stepContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
+    paddingLeft: 8,
+  },
+  stepNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+    marginRight: 8,
+    minWidth: 20,
+  },
+  stepText: {
+    fontSize: 14,
+    color: colors.text,
+    flex: 1,
+    lineHeight: 20,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 12,
+    width: '100%',
+  },
+  actionButtonText: {
+    color: colors.card,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryActionButton: {
+    backgroundColor: colors.secondary,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  secondaryActionButtonText: {
+    color: colors.primary,
+  },
+  infoBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  infoBoxLabel: {
+    fontSize: 12,
+    fontWeight: '700',
     color: colors.textSecondary,
-    textAlign: 'center',
-    maxWidth: 300,
+    marginBottom: 4,
+  },
+  infoBoxValue: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   retryButton: {
     flexDirection: 'row',
@@ -430,26 +633,6 @@ const styles = StyleSheet.create({
     color: colors.card,
     fontSize: 16,
     fontWeight: '700',
-  },
-  troubleshootBox: {
-    backgroundColor: colors.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 20,
-    width: '100%',
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  troubleshootTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  troubleshootText: {
-    fontSize: 13,
-    color: colors.text,
-    lineHeight: 20,
   },
   videoSection: {
     marginBottom: 24,
@@ -514,17 +697,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     marginTop: 8,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.secondary,
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-    borderWidth: 2,
-    borderColor: colors.border,
-    marginBottom: 12,
   },
   infoText: {
     flex: 1,

@@ -77,20 +77,23 @@ export async function fetchVideoFromSheet(
   try {
     console.log('Fetching from Google Sheets:', { word, sheetId });
     
-    const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1?key=${apiKey}`
-    );
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1?key=${apiKey}`;
+    console.log('Request URL:', url);
+    
+    const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Google Sheets API error:', response.status, errorText);
       
       if (response.status === 403) {
-        throw new Error('Access denied. Please check that the Google Sheet is publicly accessible and the API key is valid.');
+        throw new Error('ACCESS_DENIED');
       } else if (response.status === 404) {
-        throw new Error('Google Sheet not found. Please verify the Sheet ID.');
+        throw new Error('SHEET_NOT_FOUND');
+      } else if (response.status === 400) {
+        throw new Error('INVALID_REQUEST');
       } else {
-        throw new Error(`Failed to fetch data from Google Sheets: ${response.status}`);
+        throw new Error(`API_ERROR_${response.status}`);
       }
     }
 
@@ -101,7 +104,7 @@ export async function fetchVideoFromSheet(
     
     if (rows.length === 0) {
       console.error('Google Sheet is empty');
-      throw new Error('The Google Sheet appears to be empty. Please add some data.');
+      throw new Error('EMPTY_SHEET');
     }
     
     const searchWord = word.toLowerCase().trim();
@@ -116,7 +119,7 @@ export async function fetchVideoFromSheet(
         
         if (!videoUrl) {
           console.error('Video URL is empty for word:', searchWord);
-          throw new Error(`Video URL not found for "${word}". Please check the Google Sheet.`);
+          throw new Error('EMPTY_VIDEO_URL');
         }
         
         console.log('Found matching word at row', i, ':', videoUrl);
