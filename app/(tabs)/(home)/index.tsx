@@ -10,6 +10,21 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.helpButton}
+          onPress={() => router.push('/setup-info')}
+          activeOpacity={0.7}
+        >
+          <IconSymbol
+            ios_icon_name="questionmark.circle.fill"
+            android_material_icon_name="help"
+            size={28}
+            color={colors.primary}
+          />
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.content}>
         <View style={styles.header}>
           <IconSymbol
@@ -59,6 +74,22 @@ export default function HomeScreen() {
             <Text style={styles.buttonSubtext}>Use voice to translate</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={styles.setupLink}
+          onPress={() => router.push('/setup-info')}
+          activeOpacity={0.7}
+        >
+          <IconSymbol
+            ios_icon_name="info.circle"
+            android_material_icon_name="info"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={styles.setupLinkText}>
+            Videos not loading? View setup guide
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -68,6 +99,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  helpButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: colors.secondary,
   },
   content: {
     flex: 1,
@@ -122,5 +164,22 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 16,
     fontWeight: '500',
+  },
+  setupLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 32,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  setupLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });

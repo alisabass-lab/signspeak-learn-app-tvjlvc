@@ -34,6 +34,14 @@
  *    - Copy the link (format: https://drive.google.com/file/d/FILE_ID/view)
  *    - Paste in Column B of your Google Sheet
  * 
+ * IMPORTANT: For best results, use direct video URLs from services like:
+ *    - Cloudinary
+ *    - AWS S3 with public access
+ *    - Firebase Storage
+ *    - Any CDN with direct .mp4 links
+ * 
+ * Google Drive videos may have playback issues due to CORS and authentication.
+ * 
  * EXAMPLE SHEET DATA:
  * | Word    | Video URL                                                    |
  * |---------|--------------------------------------------------------------|
@@ -76,13 +84,26 @@ export async function fetchVideoFromSheet(
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Google Sheets API error:', response.status, errorText);
-      throw new Error(`Failed to fetch data from Google Sheets: ${response.status}`);
+      
+      if (response.status === 403) {
+        throw new Error('Access denied. Please check that the Google Sheet is publicly accessible and the API key is valid.');
+      } else if (response.status === 404) {
+        throw new Error('Google Sheet not found. Please verify the Sheet ID.');
+      } else {
+        throw new Error(`Failed to fetch data from Google Sheets: ${response.status}`);
+      }
     }
 
     const data = await response.json();
     console.log('Google Sheets response:', data);
     
     const rows = data.values || [];
+    
+    if (rows.length === 0) {
+      console.error('Google Sheet is empty');
+      throw new Error('The Google Sheet appears to be empty. Please add some data.');
+    }
+    
     const searchWord = word.toLowerCase().trim();
 
     console.log(`Searching for word: "${searchWord}" in ${rows.length} rows`);
@@ -92,16 +113,25 @@ export async function fetchVideoFromSheet(
       const row = rows[i];
       if (row[0] && row[0].toLowerCase().trim() === searchWord) {
         let videoUrl = row[1];
+        
+        if (!videoUrl) {
+          console.error('Video URL is empty for word:', searchWord);
+          throw new Error(`Video URL not found for "${word}". Please check the Google Sheet.`);
+        }
+        
         console.log('Found matching word at row', i, ':', videoUrl);
         
-        // Convert Google Drive link to direct video link
+        // Convert Google Drive link to streamable format
         if (videoUrl && videoUrl.includes('drive.google.com')) {
           const fileIdMatch = videoUrl.match(/\/d\/([^/]+)/);
           if (fileIdMatch) {
             const fileId = fileIdMatch[1];
-            // Use the Google Drive preview URL which works better for video playback
-            videoUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-            console.log('Converted to direct link:', videoUrl);
+            // Try multiple Google Drive URL formats for better compatibility
+            // Format 1: Direct preview (works best for streaming)
+            videoUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+            console.log('Converted to Google Drive streaming link:', videoUrl);
+          } else {
+            console.warn('Could not extract file ID from Google Drive URL:', videoUrl);
           }
         }
         
@@ -118,19 +148,37 @@ export async function fetchVideoFromSheet(
 }
 
 /**
- * Converts a Google Drive sharing URL to a direct download link
+ * Converts a Google Drive sharing URL to a streamable link
  * @param driveUrl - The Google Drive sharing URL
- * @returns The direct download URL
+ * @returns The streamable URL
  */
 export function convertDriveUrlToDirectLink(driveUrl: string): string {
   if (driveUrl.includes('drive.google.com')) {
     const fileIdMatch = driveUrl.match(/\/d\/([^/]+)/);
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
-      return `https://drive.google.com/uc?export=download&id=${fileId}`;
+      // Use the preview format which works better for video streaming
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
     }
   }
   return driveUrl;
+}
+
+/**
+ * Validates if a URL is accessible
+ * @param url - The URL to validate
+ * @returns True if accessible, false otherwise
+ */
+export async function validateVideoUrl(url: string): Promise<boolean> {
+  try {
+    console.log('Validating video URL:', url);
+    const response = await fetch(url, { method: 'HEAD' });
+    console.log('URL validation response:', response.status);
+    return response.ok;
+  } catch (error) {
+    console.error('Error validating URL:', error);
+    return false;
+  }
 }
 
 /**

@@ -6,9 +6,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
-  ActivityIndicator,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -25,6 +25,7 @@ export default function ResultScreen() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   const SHEET_ID = '1pwiLjwOjnqRtEQsonVWtVt8hAMSF0qLZmY0zTlJyKc0';
   const API_KEY = 'AIzaSyAniuVYPSTBKg9VCTLpVDp7azdmD4DXdQM';
@@ -33,8 +34,16 @@ export default function ResultScreen() {
     try {
       setLoading(true);
       setError(null);
+      setVideoError(null);
 
       console.log('Fetching video for word:', word);
+      
+      if (!word || word.trim() === '') {
+        setError('Please enter a valid word.');
+        setLoading(false);
+        return;
+      }
+
       const url = await fetchVideoFromSheet(word, SHEET_ID, API_KEY);
 
       if (url) {
@@ -43,9 +52,18 @@ export default function ResultScreen() {
       } else {
         setError(`No sign language video found for "${word}".`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching video:', err);
-      setError('Failed to load video. Please check your internet connection.');
+      
+      let errorMessage = 'Failed to load video.';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (!navigator.onLine) {
+        errorMessage = 'No internet connection. Please check your network and try again.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -62,15 +80,41 @@ export default function ResultScreen() {
     }
   });
 
+  // Listen for video player errors
+  useEffect(() => {
+    if (!player) return;
+
+    const errorListener = (error: any) => {
+      console.error('Video player error:', error);
+      setVideoError('Failed to play video. The video format may not be supported or the file may be inaccessible.');
+    };
+
+    // Note: expo-video doesn't have a direct error event, but we can monitor status
+    const checkPlayerStatus = setInterval(() => {
+      if (videoUrl && player.status === 'error') {
+        errorListener({ message: 'Video playback error' });
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(checkPlayerStatus);
+    };
+  }, [player, videoUrl]);
+
   const { isPlaying } = useEvent(player, 'playingChange', { 
     isPlaying: player.playing 
   });
 
   const togglePlayPause = () => {
-    if (isPlaying) {
-      player.pause();
-    } else {
-      player.play();
+    try {
+      if (isPlaying) {
+        player.pause();
+      } else {
+        player.play();
+      }
+    } catch (err) {
+      console.error('Error toggling play/pause:', err);
+      Alert.alert('Error', 'Failed to control video playback.');
     }
   };
 
@@ -145,6 +189,16 @@ export default function ResultScreen() {
               />
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
+            
+            <View style={styles.troubleshootBox}>
+              <Text style={styles.troubleshootTitle}>Troubleshooting Tips:</Text>
+              <Text style={styles.troubleshootText}>
+                • Check your internet connection{'\n'}
+                • Verify the word exists in the database{'\n'}
+                • Ensure Google Sheet is publicly accessible{'\n'}
+                • For Google Drive videos, make sure sharing is set to &quot;Anyone with the link&quot;
+              </Text>
+            </View>
           </View>
         )}
 
@@ -152,6 +206,19 @@ export default function ResultScreen() {
           <React.Fragment>
             <View style={styles.videoSection}>
               <Text style={styles.videoLabel}>Sign Language Video:</Text>
+              
+              {videoError && (
+                <View style={styles.videoErrorBox}>
+                  <IconSymbol
+                    ios_icon_name="exclamationmark.circle.fill"
+                    android_material_icon_name="error"
+                    size={24}
+                    color={colors.error}
+                  />
+                  <Text style={styles.videoErrorText}>{videoError}</Text>
+                </View>
+              )}
+              
               <View style={styles.videoContainer}>
                 <VideoView
                   style={styles.video}
@@ -204,6 +271,13 @@ export default function ResultScreen() {
                 />
                 <Text style={styles.infoText}>
                   Watch the video carefully and practice the sign language gesture.
+                </Text>
+              </View>
+              
+              <View style={styles.urlDebugBox}>
+                <Text style={styles.urlDebugLabel}>Video URL:</Text>
+                <Text style={styles.urlDebugText} numberOfLines={2}>
+                  {videoUrl}
                 </Text>
               </View>
             </View>
@@ -357,6 +431,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  troubleshootBox: {
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    width: '100%',
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  troubleshootTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  troubleshootText: {
+    fontSize: 13,
+    color: colors.text,
+    lineHeight: 20,
+  },
   videoSection: {
     marginBottom: 24,
   },
@@ -365,6 +459,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 12,
+  },
+  videoErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  videoErrorText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.error,
+    fontWeight: '600',
   },
   videoContainer: {
     backgroundColor: colors.card,
@@ -415,6 +524,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 2,
     borderColor: colors.border,
+    marginBottom: 12,
   },
   infoText: {
     flex: 1,
@@ -422,6 +532,24 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '500',
     lineHeight: 20,
+  },
+  urlDebugBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  urlDebugLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  urlDebugText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   tryAnotherButton: {
     backgroundColor: colors.card,
