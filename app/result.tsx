@@ -12,8 +12,7 @@ import {
   Linking,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useVideoPlayer, VideoView } from "expo-video";
-import { useEvent } from "expo";
+import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { fetchVideoFromSheet, testGoogleSheetsConnection } from "@/utils/googleSheetsHelper";
@@ -29,6 +28,10 @@ export default function ResultScreen() {
   const [errorType, setErrorType] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
+
+  const videoRef = React.useRef<Video>(null);
 
   const SHEET_ID = '1pwiLjwOjnqRtEQsonVWtVt8hAMSF0qLZmY0zTlJyKc0';
   const API_KEY = 'AIzaSyAniuVYPSTBKg9VCTLpVDp7azdmD4DXdQM';
@@ -59,6 +62,7 @@ export default function ResultScreen() {
       setError(null);
       setErrorType(null);
       setVideoError(null);
+      setVideoUrl(null);
 
       console.log('Fetching video for word:', word);
       
@@ -120,46 +124,55 @@ export default function ResultScreen() {
     fetchVideo();
   }, [fetchVideo]);
 
-  const player = useVideoPlayer(videoUrl || '', (player) => {
-    if (videoUrl) {
-      player.loop = true;
-      player.play();
-    }
-  });
-
-  useEffect(() => {
-    if (!player) return;
-
-    const errorListener = (error: any) => {
-      console.error('Video player error:', error);
-      setVideoError('Failed to play video. The video format may not be supported or the file may be inaccessible.');
-    };
-
-    const checkPlayerStatus = setInterval(() => {
-      if (videoUrl && player.status === 'error') {
-        errorListener({ message: 'Video playback error' });
+  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+    if (status.isLoaded) {
+      setIsPlaying(status.isPlaying);
+      setVideoLoading(false);
+      
+      if (status.error) {
+        console.error('Video playback error:', status.error);
+        setVideoError('Failed to play video. The video format may not be supported, or the file may be inaccessible.');
       }
-    }, 1000);
+    } else if (status.error) {
+      console.error('Video loading error:', status.error);
+      setVideoError('Failed to load video. Please check the video URL and your internet connection.');
+      setVideoLoading(false);
+    }
+  };
 
-    return () => {
-      clearInterval(checkPlayerStatus);
-    };
-  }, [player, videoUrl]);
-
-  const { isPlaying } = useEvent(player, 'playingChange', { 
-    isPlaying: player.playing 
-  });
-
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
     try {
-      if (isPlaying) {
-        player.pause();
-      } else {
-        player.play();
+      if (!videoRef.current) {
+        console.error('Video ref is null');
+        return;
+      }
+
+      const status = await videoRef.current.getStatusAsync();
+      
+      if (status.isLoaded) {
+        if (status.isPlaying) {
+          await videoRef.current.pauseAsync();
+        } else {
+          await videoRef.current.playAsync();
+        }
       }
     } catch (err) {
       console.error('Error toggling play/pause:', err);
       Alert.alert('Error', 'Failed to control video playback.');
+    }
+  };
+
+  const replayVideo = async () => {
+    try {
+      if (!videoRef.current) {
+        console.error('Video ref is null');
+        return;
+      }
+
+      await videoRef.current.replayAsync();
+    } catch (err) {
+      console.error('Error replaying video:', err);
+      Alert.alert('Error', 'Failed to replay video.');
     }
   };
 
@@ -435,17 +448,41 @@ export default function ResultScreen() {
                     color={colors.error}
                   />
                   <Text style={styles.videoErrorText}>{videoError}</Text>
+                  <View style={styles.videoErrorHelpBox}>
+                    <Text style={styles.videoErrorHelpTitle}>Possible solutions:</Text>
+                    <Text style={styles.videoErrorHelpText}>
+                      - Make sure the Google Drive video is set to &quot;Anyone with the link can view&quot;
+                    </Text>
+                    <Text style={styles.videoErrorHelpText}>
+                      - Try uploading the video to a different hosting service (Cloudinary, AWS S3, etc.)
+                    </Text>
+                    <Text style={styles.videoErrorHelpText}>
+                      - Verify the video file is in MP4 format with H.264 codec
+                    </Text>
+                  </View>
                 </View>
               )}
               
               <View style={styles.videoContainer}>
-                <VideoView
+                {videoLoading && (
+                  <View style={styles.videoLoadingOverlay}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={styles.videoLoadingText}>Loading video...</Text>
+                  </View>
+                )}
+                <Video
+                  ref={videoRef}
                   style={styles.video}
-                  player={player}
-                  allowsFullscreen
-                  allowsPictureInPicture
-                  nativeControls={false}
-                  contentFit="contain"
+                  source={{ uri: videoUrl }}
+                  useNativeControls={false}
+                  resizeMode={ResizeMode.CONTAIN}
+                  isLooping
+                  shouldPlay={false}
+                  onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+                  onError={(error) => {
+                    console.error('Video component error:', error);
+                    setVideoError('Failed to play video. The video format may not be supported, or the file may be inaccessible.');
+                  }}
                 />
               </View>
 
@@ -468,7 +505,7 @@ export default function ResultScreen() {
 
                 <TouchableOpacity
                   style={styles.controlButton}
-                  onPress={() => player.replay()}
+                  onPress={replayVideo}
                   activeOpacity={0.7}
                 >
                   <IconSymbol
@@ -706,6 +743,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   infoBoxLabel: {
     fontSize: 12,
@@ -743,19 +783,34 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   videoErrorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#FEE2E2',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
-    gap: 8,
   },
   videoErrorText: {
-    flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.error,
     fontWeight: '600',
+    marginTop: 8,
+  },
+  videoErrorHelpBox: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#FCA5A5',
+  },
+  videoErrorHelpTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.error,
+    marginBottom: 6,
+  },
+  videoErrorHelpText: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 4,
+    lineHeight: 18,
   },
   videoContainer: {
     backgroundColor: colors.card,
@@ -767,6 +822,24 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     boxShadow: '0px 8px 24px rgba(59, 130, 246, 0.2)',
     elevation: 6,
+    position: 'relative',
+  },
+  videoLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  videoLoadingText: {
+    color: colors.card,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 12,
   },
   video: {
     width: '100%',

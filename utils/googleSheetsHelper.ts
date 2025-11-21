@@ -227,6 +227,53 @@ export async function testGoogleSheetsConnection(
 }
 
 /**
+ * Converts a Google Drive sharing URL to a direct download link
+ * This format works better for video streaming in mobile apps
+ * @param driveUrl - The Google Drive sharing URL
+ * @returns The direct download URL
+ */
+export function convertDriveUrlToDirectLink(driveUrl: string): string {
+  console.log('Converting Drive URL:', driveUrl);
+  
+  if (driveUrl.includes('drive.google.com')) {
+    // Extract file ID from various Google Drive URL formats
+    let fileId = null;
+    
+    // Format 1: https://drive.google.com/file/d/FILE_ID/view
+    const match1 = driveUrl.match(/\/file\/d\/([^/]+)/);
+    if (match1) {
+      fileId = match1[1];
+    }
+    
+    // Format 2: https://drive.google.com/open?id=FILE_ID
+    const match2 = driveUrl.match(/[?&]id=([^&]+)/);
+    if (match2) {
+      fileId = match2[1];
+    }
+    
+    // Format 3: https://drive.google.com/uc?id=FILE_ID
+    const match3 = driveUrl.match(/\/uc\?.*id=([^&]+)/);
+    if (match3) {
+      fileId = match3[1];
+    }
+    
+    if (fileId) {
+      // Clean up file ID (remove any trailing parameters)
+      fileId = fileId.split('?')[0].split('&')[0];
+      
+      // Use the download format which works better for video streaming
+      const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+      console.log('Converted to direct URL:', directUrl);
+      return directUrl;
+    } else {
+      console.warn('Could not extract file ID from Google Drive URL:', driveUrl);
+    }
+  }
+  
+  return driveUrl;
+}
+
+/**
  * Fetches a video URL from Google Sheets based on the word
  * @param word - The word to search for
  * @param sheetId - The Google Sheet ID
@@ -324,24 +371,13 @@ export async function fetchVideoFromSheet(
           throw new Error('EMPTY_VIDEO_URL');
         }
         
-        console.log(`Row ${i}: MATCH FOUND! Video URL:`, videoUrl);
+        console.log(`Row ${i}: MATCH FOUND! Original Video URL:`, videoUrl);
         
-        // Convert Google Drive link to streamable format
-        if (videoUrl.includes('drive.google.com')) {
-          const fileIdMatch = videoUrl.match(/\/d\/([^/]+)/);
-          if (fileIdMatch) {
-            const fileId = fileIdMatch[1];
-            const originalUrl = videoUrl;
-            videoUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-            console.log('Converted Google Drive URL:');
-            console.log('  Original:', originalUrl);
-            console.log('  Converted:', videoUrl);
-          } else {
-            console.warn('Could not extract file ID from Google Drive URL:', videoUrl);
-          }
-        }
+        // Convert Google Drive link to direct download format
+        const convertedUrl = convertDriveUrlToDirectLink(videoUrl);
+        console.log('Final Video URL:', convertedUrl);
         
-        return videoUrl;
+        return convertedUrl;
       }
     }
 
@@ -355,22 +391,6 @@ export async function fetchVideoFromSheet(
     console.error('Error stack:', error.stack);
     throw error;
   }
-}
-
-/**
- * Converts a Google Drive sharing URL to a streamable link
- * @param driveUrl - The Google Drive sharing URL
- * @returns The streamable URL
- */
-export function convertDriveUrlToDirectLink(driveUrl: string): string {
-  if (driveUrl.includes('drive.google.com')) {
-    const fileIdMatch = driveUrl.match(/\/d\/([^/]+)/);
-    if (fileIdMatch) {
-      const fileId = fileIdMatch[1];
-      return `https://drive.google.com/uc?export=view&id=${fileId}`;
-    }
-  }
-  return driveUrl;
 }
 
 /**
@@ -417,12 +437,7 @@ export async function fetchAllVideos(
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       if (row[0] && row[1]) {
-        let videoUrl = row[1];
-        
-        // Convert Google Drive links
-        if (videoUrl.includes('drive.google.com')) {
-          videoUrl = convertDriveUrlToDirectLink(videoUrl);
-        }
+        const videoUrl = convertDriveUrlToDirectLink(row[1]);
         
         videos.push({
           word: row[0].trim(),
