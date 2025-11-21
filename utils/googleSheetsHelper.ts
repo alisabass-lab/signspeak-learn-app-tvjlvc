@@ -96,7 +96,7 @@ export async function fetchVideoFromSheet(
         
         // Convert Google Drive link to direct video link
         if (videoUrl && videoUrl.includes('drive.google.com')) {
-          const fileIdMatch = videoUrl.match(/\/d\/([^\/]+)/);
+          const fileIdMatch = videoUrl.match(/\/d\/([^/]+)/);
           if (fileIdMatch) {
             const fileId = fileIdMatch[1];
             // Use the Google Drive preview URL which works better for video playback
@@ -124,7 +124,7 @@ export async function fetchVideoFromSheet(
  */
 export function convertDriveUrlToDirectLink(driveUrl: string): string {
   if (driveUrl.includes('drive.google.com')) {
-    const fileIdMatch = driveUrl.match(/\/d\/([^\/]+)/);
+    const fileIdMatch = driveUrl.match(/\/d\/([^/]+)/);
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
       return `https://drive.google.com/uc?export=download&id=${fileId}`;

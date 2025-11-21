@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -29,11 +29,7 @@ export default function ResultScreen() {
   const SHEET_ID = '1pwiLjwOjnqRtEQsonVWtVt8hAMSF0qLZmY0zTlJyKc0';
   const API_KEY = 'AIzaSyAniuVYPSTBKg9VCTLpVDp7azdmD4DXdQM';
 
-  useEffect(() => {
-    fetchVideo();
-  }, [word]);
-
-  const fetchVideo = async () => {
+  const fetchVideo = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -53,7 +49,11 @@ export default function ResultScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [word, SHEET_ID, API_KEY]);
+
+  useEffect(() => {
+    fetchVideo();
+  }, [fetchVideo]);
 
   const player = useVideoPlayer(videoUrl || '', (player) => {
     if (videoUrl) {
