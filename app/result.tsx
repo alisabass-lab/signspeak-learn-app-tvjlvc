@@ -16,6 +16,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { fetchVideoFromSheet, testGoogleSheetsConnection } from "@/utils/googleSheetsHelper";
+import { saveRecentQuestion } from "@/utils/recentQuestionsHelper";
 
 export default function ResultScreen() {
   const router = useRouter();
@@ -78,6 +79,8 @@ export default function ResultScreen() {
       if (url) {
         console.log('Video URL found:', url);
         setVideoUrl(url);
+        // Save to recent questions
+        await saveRecentQuestion(word);
       } else {
         setError(`No sign language video found for "${word}".`);
         setErrorType('WORD_NOT_FOUND');
@@ -492,12 +495,16 @@ export default function ResultScreen() {
                   onPress={togglePlayPause}
                   activeOpacity={0.7}
                 >
-                  <IconSymbol
-                    ios_icon_name={isPlaying ? "pause.circle.fill" : "play.circle.fill"}
-                    android_material_icon_name={isPlaying ? "pause_circle" : "play_circle"}
-                    size={36}
-                    color={colors.card}
-                  />
+                  <View style={styles.playButtonContainer}>
+                    {isPlaying ? (
+                      <View style={styles.pauseIcon}>
+                        <View style={styles.pauseBar} />
+                        <View style={styles.pauseBar} />
+                      </View>
+                    ) : (
+                      <View style={styles.playTriangle} />
+                    )}
+                  </View>
                   <Text style={styles.controlButtonText}>
                     {isPlaying ? 'Pause' : 'Play'}
                   </Text>
@@ -572,7 +579,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderBottomWidth: 2,
     borderBottomColor: colors.border,
-    boxShadow: '0px 2px 8px rgba(59, 130, 246, 0.1)',
+    boxShadow: '0px 2px 8px rgba(180, 111, 80, 0.1)',
     elevation: 2,
   },
   backButton: {
@@ -605,7 +612,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: colors.border,
-    boxShadow: '0px 4px 12px rgba(59, 130, 246, 0.15)',
+    boxShadow: '0px 4px 12px rgba(180, 111, 80, 0.15)',
     elevation: 3,
   },
   wordLabel: {
@@ -737,7 +744,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   infoBox: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.secondary,
     borderRadius: 8,
     padding: 12,
     marginTop: 12,
@@ -823,10 +830,10 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: colors.border,
     width: '100%',
-    maxWidth: 600,
-    aspectRatio: 16 / 9,
+    maxWidth: 400,
+    aspectRatio: 9 / 16,
     alignSelf: 'center',
-    boxShadow: '0px 8px 24px rgba(59, 130, 246, 0.2)',
+    boxShadow: '0px 8px 24px rgba(180, 111, 80, 0.2)',
     elevation: 6,
     position: 'relative',
   },
@@ -858,7 +865,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 12,
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 400,
     alignSelf: 'center',
   },
   controlButton: {
@@ -868,7 +875,7 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0px 4px 12px rgba(59, 130, 246, 0.3)',
+    boxShadow: '0px 4px 12px rgba(180, 111, 80, 0.3)',
     elevation: 4,
     borderWidth: 3,
     borderColor: colors.accent,
@@ -879,6 +886,39 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 8,
   },
+  playButtonContainer: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playTriangle: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 20,
+    borderRightWidth: 0,
+    borderBottomWidth: 12,
+    borderTopWidth: 12,
+    borderLeftColor: colors.card,
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderTopColor: 'transparent',
+    marginLeft: 4,
+  },
+  pauseIcon: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pauseBar: {
+    width: 8,
+    height: 24,
+    backgroundColor: colors.card,
+    borderRadius: 2,
+  },
   infoText: {
     flex: 1,
     fontSize: 14,
@@ -887,13 +927,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   urlDebugBox: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.secondary,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
     borderColor: colors.border,
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 400,
     alignSelf: 'center',
   },
   urlDebugLabel: {
@@ -915,7 +955,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    boxShadow: '0px 4px 12px rgba(59, 130, 246, 0.15)',
+    boxShadow: '0px 4px 12px rgba(180, 111, 80, 0.15)',
     elevation: 3,
     borderWidth: 3,
     borderColor: colors.border,

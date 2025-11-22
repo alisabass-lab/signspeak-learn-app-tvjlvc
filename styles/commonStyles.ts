@@ -1,17 +1,20 @@
 
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
+// Theme inspired by the warm, playful design from the provided image
 export const colors = {
-  background: '#FFFFFF',      // White background
-  text: '#1E3A8A',            // Dark blue text
-  textSecondary: '#64748B',   // Gray secondary text
-  primary: '#3B82F6',         // Bright blue primary
-  secondary: '#DBEAFE',       // Light blue secondary
-  accent: '#2563EB',          // Darker blue accent
+  background: '#F5E6D3',      // Warm beige background
+  text: '#2C1810',            // Dark brown text
+  textSecondary: '#8B6F47',   // Medium brown secondary text
+  primary: '#D4845C',         // Warm terracotta/orange primary
+  secondary: '#E8D4C0',       // Light beige secondary
+  accent: '#B86F50',          // Darker terracotta accent
   card: '#FFFFFF',            // White cards
-  border: '#E0E7FF',          // Light blue border
-  success: '#10B981',         // Green for success
-  error: '#EF4444',           // Red for errors
+  border: '#D4B5A0',          // Tan border
+  success: '#7FB069',         // Muted green for success
+  error: '#D64545',           // Warm red for errors
+  teal: '#5FA8A8',            // Teal accent from theme
+  yellow: '#F4C430',          // Warm yellow accent
 };
 
 export const buttonStyles = StyleSheet.create({
@@ -81,7 +84,7 @@ export const commonStyles = StyleSheet.create({
     padding: 20,
     marginVertical: 8,
     width: '100%',
-    boxShadow: '0px 4px 12px rgba(59, 130, 246, 0.15)',
+    boxShadow: '0px 4px 12px rgba(180, 111, 80, 0.15)',
     elevation: 3,
   },
   icon: {

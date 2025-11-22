@@ -73,6 +73,45 @@ export default function HomeScreen() {
             <Text style={styles.buttonText}>Speak a Word</Text>
             <Text style={styles.buttonSubtext}>Use voice to translate</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/recent-questions')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconContainer}>
+              <IconSymbol
+                ios_icon_name="clock.fill"
+                android_material_icon_name="history"
+                size={56}
+                color={colors.teal}
+              />
+            </View>
+            <Text style={styles.buttonText}>Recent Questions</Text>
+            <Text style={styles.buttonSubtext}>View your search history</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.disabledButton]}
+            onPress={() => router.push('/camera-input')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconContainer}>
+              <IconSymbol
+                ios_icon_name="video.fill"
+                android_material_icon_name="videocam"
+                size={56}
+                color={colors.textSecondary}
+              />
+            </View>
+            <View style={styles.comingSoonBadge}>
+              <Text style={styles.comingSoonText}>Coming Soon</Text>
+            </View>
+            <Text style={[styles.buttonText, styles.disabledText]}>Camera Input</Text>
+            <Text style={[styles.buttonSubtext, styles.disabledText]}>
+              Sign language recognition
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity
@@ -120,7 +159,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 32,
   },
   subtitle: {
     fontSize: 18,
@@ -131,19 +170,23 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     maxWidth: 500,
-    gap: 24,
+    gap: 16,
   },
   button: {
     backgroundColor: colors.card,
     borderRadius: 20,
-    padding: 32,
+    padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0px 8px 24px rgba(59, 130, 246, 0.2)',
+    boxShadow: '0px 8px 24px rgba(180, 111, 80, 0.2)',
     elevation: 6,
-    minHeight: 180,
+    minHeight: 140,
     borderWidth: 3,
     borderColor: colors.border,
+    position: 'relative',
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
   iconContainer: {
     width: 80,
@@ -152,24 +195,43 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   buttonText: {
     color: colors.text,
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   buttonSubtext: {
     color: colors.textSecondary,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
+  },
+  disabledText: {
+    color: colors.textSecondary,
+  },
+  comingSoonBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  comingSoonText: {
+    color: colors.card,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   setupLink: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 32,
+    marginTop: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: colors.secondary,
