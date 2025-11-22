@@ -28,16 +28,15 @@
  *    - Create credentials (API Key)
  *    - Restrict the API key to Google Sheets API only
  * 
- * 5. Google Drive Video Links:
- *    - Upload videos to Google Drive
- *    - Right-click video > Get link > Change to "Anyone with the link"
- *    - Copy the link (format: https://drive.google.com/file/d/FILE_ID/view)
- *    - Paste in Column B of your Google Sheet
+ * 5. Video Hosting Options:
+ *    - Firebase Storage (Recommended): Upload videos and get public URLs
+ *    - Google Drive: Upload videos and share with "Anyone with the link"
+ *    - Any CDN with direct .mp4 links
  * 
  * IMPORTANT: For best results, use direct video URLs from services like:
+ *    - Firebase Storage (https://firebasestorage.googleapis.com/...)
  *    - Cloudinary
  *    - AWS S3 with public access
- *    - Firebase Storage
  *    - Any CDN with direct .mp4 links
  * 
  * Google Drive videos may have playback issues due to CORS and authentication.
@@ -45,7 +44,7 @@
  * EXAMPLE SHEET DATA:
  * | Word    | Video URL                                                    |
  * |---------|--------------------------------------------------------------|
- * | hello   | https://drive.google.com/file/d/abc123/view                  |
+ * | hello   | https://firebasestorage.googleapis.com/v0/b/...             |
  * | thanks  | https://drive.google.com/file/d/def456/view                  |
  * | please  | https://www.example.com/videos/please.mp4                    |
  * 
@@ -53,8 +52,9 @@
  * - The Google Sheets API key provided in the app is: AIzaSyAniuVYPSTBKg9VCTLpVDp7azdmD4DXdQM
  * - The Google Sheet ID is: 1pwiLjwOjnqRtEQsonVWtVt8hAMSF0qLZmY0zTlJyKc0
  * - Make sure your Google Sheet is publicly accessible
- * - Video files should be hosted on Google Drive or a public CDN
+ * - Video files should be hosted on Firebase Storage, Google Drive, or a public CDN
  * - For Google Drive videos, ensure they are set to "Anyone with the link can view"
+ * - Firebase Storage URLs are already direct links and don't need conversion
  */
 
 export interface VideoData {
@@ -228,31 +228,46 @@ export async function testGoogleSheetsConnection(
 
 /**
  * Converts a Google Drive sharing URL to a direct download link
- * This format works better for video streaming in mobile apps
- * @param driveUrl - The Google Drive sharing URL
+ * Also handles Firebase Storage URLs and other direct video URLs
+ * @param url - The video URL (Google Drive, Firebase Storage, or direct link)
  * @returns The direct download URL
  */
-export function convertDriveUrlToDirectLink(driveUrl: string): string {
-  console.log('Converting Drive URL:', driveUrl);
+export function convertDriveUrlToDirectLink(url: string): string {
+  console.log('Processing video URL:', url);
   
-  if (driveUrl.includes('drive.google.com')) {
+  // Check if it's a Firebase Storage URL - these are already direct links
+  if (url.includes('firebasestorage.googleapis.com')) {
+    console.log('Firebase Storage URL detected - using as-is');
+    return url;
+  }
+  
+  // Check if it's already a direct video link (ends with video extension)
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.m4v'];
+  const lowerUrl = url.toLowerCase();
+  if (videoExtensions.some(ext => lowerUrl.includes(ext))) {
+    console.log('Direct video URL detected - using as-is');
+    return url;
+  }
+  
+  // Handle Google Drive URLs
+  if (url.includes('drive.google.com')) {
     // Extract file ID from various Google Drive URL formats
     let fileId = null;
     
     // Format 1: https://drive.google.com/file/d/FILE_ID/view
-    const match1 = driveUrl.match(/\/file\/d\/([^/]+)/);
+    const match1 = url.match(/\/file\/d\/([^/]+)/);
     if (match1) {
       fileId = match1[1];
     }
     
     // Format 2: https://drive.google.com/open?id=FILE_ID
-    const match2 = driveUrl.match(/[?&]id=([^&]+)/);
+    const match2 = url.match(/[?&]id=([^&]+)/);
     if (match2) {
       fileId = match2[1];
     }
     
     // Format 3: https://drive.google.com/uc?id=FILE_ID
-    const match3 = driveUrl.match(/\/uc\?.*id=([^&]+)/);
+    const match3 = url.match(/\/uc\?.*id=([^&]+)/);
     if (match3) {
       fileId = match3[1];
     }
@@ -263,14 +278,16 @@ export function convertDriveUrlToDirectLink(driveUrl: string): string {
       
       // Use the download format which works better for video streaming
       const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-      console.log('Converted to direct URL:', directUrl);
+      console.log('Converted Google Drive URL to direct URL:', directUrl);
       return directUrl;
     } else {
-      console.warn('Could not extract file ID from Google Drive URL:', driveUrl);
+      console.warn('Could not extract file ID from Google Drive URL:', url);
     }
   }
   
-  return driveUrl;
+  // If it's not a recognized format, return as-is
+  console.log('URL format not recognized - using as-is');
+  return url;
 }
 
 /**
@@ -373,7 +390,7 @@ export async function fetchVideoFromSheet(
         
         console.log(`Row ${i}: MATCH FOUND! Original Video URL:`, videoUrl);
         
-        // Convert Google Drive link to direct download format
+        // Convert URL to appropriate format (handles Google Drive, Firebase Storage, etc.)
         const convertedUrl = convertDriveUrlToDirectLink(videoUrl);
         console.log('Final Video URL:', convertedUrl);
         
