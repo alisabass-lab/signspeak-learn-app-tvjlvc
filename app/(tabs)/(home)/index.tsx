@@ -1,6 +1,6 @@
 
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -10,126 +10,117 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.helpButton}
-          onPress={() => router.push('/setup-info')}
-          activeOpacity={0.7}
-        >
-          <IconSymbol
-            ios_icon_name="questionmark.circle.fill"
-            android_material_icon_name="help"
-            size={28}
-            color={colors.primary}
-          />
-        </TouchableOpacity>
-      </View>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <IconSymbol
+              ios_icon_name="hand.raised.fill"
+              android_material_icon_name="waving_hand"
+              size={64}
+              color={colors.primary}
+            />
+            <Text style={commonStyles.title}>Sign Language Helper</Text>
+            <Text style={[commonStyles.text, styles.subtitle]}>
+              Learn sign language by typing or speaking words
+            </Text>
+          </View>
 
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <IconSymbol
-            ios_icon_name="hand.raised.fill"
-            android_material_icon_name="waving_hand"
-            size={64}
-            color={colors.primary}
-          />
-          <Text style={commonStyles.title}>Sign Language Helper</Text>
-          <Text style={[commonStyles.text, styles.subtitle]}>
-            Learn sign language by typing or speaking words
-          </Text>
-        </View>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => router.push('/input?mode=type')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                <IconSymbol
+                  ios_icon_name="keyboard"
+                  android_material_icon_name="keyboard"
+                  size={56}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={styles.buttonText}>Type a Word</Text>
+              <Text style={styles.buttonSubtext}>Enter text to translate</Text>
+            </TouchableOpacity>
 
-        <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => router.push('/input?mode=speak')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                <IconSymbol
+                  ios_icon_name="mic.fill"
+                  android_material_icon_name="mic"
+                  size={56}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={styles.buttonText}>Speak a Word</Text>
+              <Text style={styles.buttonSubtext}>Use voice to translate</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => router.push('/recent-questions')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                <IconSymbol
+                  ios_icon_name="clock.fill"
+                  android_material_icon_name="history"
+                  size={56}
+                  color={colors.teal}
+                />
+              </View>
+              <Text style={styles.buttonText}>Recent Questions</Text>
+              <Text style={styles.buttonSubtext}>View your search history</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.disabledButton]}
+              onPress={() => router.push('/camera-input')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                <IconSymbol
+                  ios_icon_name="video.fill"
+                  android_material_icon_name="videocam"
+                  size={56}
+                  color={colors.textSecondary}
+                />
+              </View>
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Coming Soon</Text>
+              </View>
+              <Text style={[styles.buttonText, styles.disabledText]}>Camera Input</Text>
+              <Text style={[styles.buttonSubtext, styles.disabledText]}>
+                Sign language recognition
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
-            style={styles.button}
-            onPress={() => router.push('/input?mode=type')}
+            style={styles.setupLink}
+            onPress={() => router.push('/setup-info')}
             activeOpacity={0.7}
           >
-            <View style={styles.iconContainer}>
-              <IconSymbol
-                ios_icon_name="keyboard"
-                android_material_icon_name="keyboard"
-                size={56}
-                color={colors.primary}
-              />
-            </View>
-            <Text style={styles.buttonText}>Type a Word</Text>
-            <Text style={styles.buttonSubtext}>Enter text to translate</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => router.push('/input?mode=speak')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconContainer}>
-              <IconSymbol
-                ios_icon_name="mic.fill"
-                android_material_icon_name="mic"
-                size={56}
-                color={colors.primary}
-              />
-            </View>
-            <Text style={styles.buttonText}>Speak a Word</Text>
-            <Text style={styles.buttonSubtext}>Use voice to translate</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => router.push('/recent-questions')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconContainer}>
-              <IconSymbol
-                ios_icon_name="clock.fill"
-                android_material_icon_name="history"
-                size={56}
-                color={colors.teal}
-              />
-            </View>
-            <Text style={styles.buttonText}>Recent Questions</Text>
-            <Text style={styles.buttonSubtext}>View your search history</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.disabledButton]}
-            onPress={() => router.push('/camera-input')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconContainer}>
-              <IconSymbol
-                ios_icon_name="video.fill"
-                android_material_icon_name="videocam"
-                size={56}
-                color={colors.textSecondary}
-              />
-            </View>
-            <View style={styles.comingSoonBadge}>
-              <Text style={styles.comingSoonText}>Coming Soon</Text>
-            </View>
-            <Text style={[styles.buttonText, styles.disabledText]}>Camera Input</Text>
-            <Text style={[styles.buttonSubtext, styles.disabledText]}>
-              Sign language recognition
+            <IconSymbol
+              ios_icon_name="info.circle"
+              android_material_icon_name="info"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={styles.setupLinkText}>
+              Videos not loading? View setup guide
             </Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.setupLink}
-          onPress={() => router.push('/setup-info')}
-          activeOpacity={0.7}
-        >
-          <IconSymbol
-            ios_icon_name="info.circle"
-            android_material_icon_name="info"
-            size={20}
-            color={colors.primary}
-          />
-          <Text style={styles.setupLinkText}>
-            Videos not loading? View setup guide
-          </Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -139,23 +130,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+  scrollView: {
+    flex: 1,
   },
-  helpButton: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: colors.secondary,
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 160,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingBottom: 140,
+    paddingTop: 20,
+    minHeight: 800,
   },
   header: {
     alignItems: 'center',
@@ -166,6 +154,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 12,
     maxWidth: 400,
+    textAlign: 'center',
   },
   buttonContainer: {
     width: '100%',
