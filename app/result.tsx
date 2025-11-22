@@ -775,18 +775,21 @@ const styles = StyleSheet.create({
   },
   videoSection: {
     marginBottom: 24,
+    alignItems: 'center',
   },
   videoLabel: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 12,
+    alignSelf: 'flex-start',
   },
   videoErrorBox: {
     backgroundColor: '#FEE2E2',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
+    width: '100%',
   },
   videoErrorText: {
     fontSize: 14,
@@ -819,7 +822,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 3,
     borderColor: colors.border,
+    width: '100%',
+    maxWidth: 600,
     aspectRatio: 16 / 9,
+    alignSelf: 'center',
     boxShadow: '0px 8px 24px rgba(59, 130, 246, 0.2)',
     elevation: 6,
     position: 'relative',
@@ -851,6 +857,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginBottom: 20,
     gap: 12,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
   },
   controlButton: {
     flex: 1,
@@ -883,6 +892,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
   },
   urlDebugLabel: {
     fontSize: 12,
