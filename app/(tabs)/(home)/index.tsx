@@ -40,7 +40,7 @@ export default function HomeScreen() {
                   ios_icon_name="keyboard"
                   android_material_icon_name="keyboard"
                   size={56}
-                  color={colors.primary}
+                  color={colors.card}
                 />
               </View>
               <Text style={styles.buttonText}>Type a Word</Text>
@@ -57,7 +57,7 @@ export default function HomeScreen() {
                   ios_icon_name="mic.fill"
                   android_material_icon_name="mic"
                   size={56}
-                  color={colors.primary}
+                  color={colors.card}
                 />
               </View>
               <Text style={styles.buttonText}>Speak a Word</Text>
@@ -74,7 +74,7 @@ export default function HomeScreen() {
                   ios_icon_name="clock.fill"
                   android_material_icon_name="history"
                   size={56}
-                  color={colors.teal}
+                  color={colors.card}
                 />
               </View>
               <Text style={styles.buttonText}>Recent Questions</Text>
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
