@@ -369,8 +369,8 @@ export default function ResultScreen() {
           activeOpacity={0.7}
         >
           <IconSymbol
-            ios_icon_name="chevron.left"
-            android_material_icon_name="arrow_back"
+            ios_icon_name="arrowshape.turn.up.left.fill"
+            android_material_icon_name="reply"
             size={28}
             color={colors.text}
           />
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     width: '100%',
     maxWidth: 600,
-    aspectRatio: 16 / 9,
+    aspectRatio: 1,
     alignSelf: 'center',
     boxShadow: '0px 8px 24px rgba(180, 111, 80, 0.2)',
     elevation: 6,
