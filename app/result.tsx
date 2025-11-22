@@ -377,13 +377,13 @@ export default function ResultScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sign Language</Text>
         <TouchableOpacity
-          style={styles.diagnosticButton}
-          onPress={runDiagnostics}
+          style={styles.homeButton}
+          onPress={() => router.push('/(tabs)/(home)')}
           activeOpacity={0.7}
         >
           <IconSymbol
-            ios_icon_name="stethoscope"
-            android_material_icon_name="bug_report"
+            ios_icon_name="house.fill"
+            android_material_icon_name="home"
             size={24}
             color={colors.text}
           />
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.secondary,
   },
-  diagnosticButton: {
+  homeButton: {
     padding: 8,
     borderRadius: 12,
     backgroundColor: colors.secondary,
@@ -830,8 +830,8 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: colors.border,
     width: '100%',
-    maxWidth: 400,
-    aspectRatio: 9 / 16,
+    maxWidth: 600,
+    aspectRatio: 16 / 9,
     alignSelf: 'center',
     boxShadow: '0px 8px 24px rgba(180, 111, 80, 0.2)',
     elevation: 6,
