@@ -1,6 +1,6 @@
 
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -17,11 +17,10 @@ export default function HomeScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <IconSymbol
-              ios_icon_name="hand.raised.fill"
-              android_material_icon_name="waving_hand"
-              size={64}
-              color={colors.primary}
+            <Image
+              source={require('@/assets/images/b6dc9000-fa54-434e-a5e2-caecec84a816.png')}
+              style={styles.logo}
+              resizeMode="contain"
             />
             <Text style={commonStyles.title}>Sign Language Helper</Text>
             <Text style={[commonStyles.text, styles.subtitle]}>
@@ -148,6 +147,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 32,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
   },
   subtitle: {
     fontSize: 18,
