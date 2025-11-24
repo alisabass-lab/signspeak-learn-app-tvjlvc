@@ -13,6 +13,11 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
+import {
+  useSpeechRecognitionEvent,
+  addSpeechRecognitionListener,
+  ExpoSpeechRecognitionModule,
+} from "expo-speech-recognition";
 
 export default function InputScreen() {
   const router = useRouter();
@@ -21,6 +26,35 @@ export default function InputScreen() {
 
   const [text, setText] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+
+  // Handle speech recognition events for native platforms
+  useSpeechRecognitionEvent("start", () => {
+    console.log("Speech recognition started");
+    setIsListening(true);
+    setRecognizing(true);
+  });
+
+  useSpeechRecognitionEvent("end", () => {
+    console.log("Speech recognition ended");
+    setIsListening(false);
+    setRecognizing(false);
+  });
+
+  useSpeechRecognitionEvent("result", (event) => {
+    console.log("Speech recognition result:", event.results);
+    const transcript = event.results[0]?.transcript;
+    if (transcript) {
+      setText(transcript);
+    }
+  });
+
+  useSpeechRecognitionEvent("error", (event) => {
+    console.error("Speech recognition error:", event.error);
+    setIsListening(false);
+    setRecognizing(false);
+    Alert.alert("Error", `Speech recognition failed: ${event.error}. Please try again.`);
+  });
 
   useEffect(() => {
     if (mode === 'speak' && Platform.OS === 'web') {
@@ -28,8 +62,9 @@ export default function InputScreen() {
     }
   }, [mode]);
 
-  const startListening = () => {
+  const startListening = async () => {
     if (Platform.OS === 'web') {
+      // Web implementation using browser's SpeechRecognition API
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       
       if (!SpeechRecognition) {
@@ -66,12 +101,61 @@ export default function InputScreen() {
 
       recognition.start();
     } else {
-      Alert.alert(
-        'Native Platform',
-        'Speech recognition on mobile requires additional native modules. For now, please use the text input option or try on web browser.',
-        [{ text: 'OK' }]
-      );
+      // Native implementation using expo-speech-recognition
+      try {
+        // Check if speech recognition is available
+        const result = await ExpoSpeechRecognitionModule.getStateAsync();
+        console.log("Speech recognition state:", result);
+
+        // Request permissions
+        const { status, granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        console.log("Permission status:", status, "granted:", granted);
+
+        if (!granted) {
+          Alert.alert(
+            'Permission Required',
+            'Microphone permission is required for speech recognition. Please enable it in your device settings.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+
+        // Start speech recognition
+        await ExpoSpeechRecognitionModule.start({
+          lang: "en-US",
+          interimResults: true,
+          maxAlternatives: 1,
+          continuous: false,
+          requiresOnDeviceRecognition: false,
+          addsPunctuation: false,
+          contextualStrings: ["hello", "thank you", "good morning", "please", "sorry"],
+        });
+
+        console.log("Speech recognition started successfully");
+      } catch (error) {
+        console.error("Failed to start speech recognition:", error);
+        setIsListening(false);
+        setRecognizing(false);
+        Alert.alert(
+          'Error',
+          'Failed to start speech recognition. Please make sure your device supports this feature and try again.',
+          [{ text: 'OK' }]
+        );
+      }
     }
+  };
+
+  const stopListening = async () => {
+    if (Platform.OS !== 'web') {
+      try {
+        await ExpoSpeechRecognitionModule.stop();
+        console.log("Speech recognition stopped");
+      } catch (error) {
+        console.error("Failed to stop speech recognition:", error);
+      }
+    }
+    setIsListening(false);
+    setRecognizing(false);
   };
 
   const handleTranslate = () => {
@@ -130,9 +214,8 @@ export default function InputScreen() {
         {mode === 'speak' && (
           <TouchableOpacity
             style={[styles.micButton, isListening && styles.micButtonActive]}
-            onPress={startListening}
+            onPress={isListening ? stopListening : startListening}
             activeOpacity={0.7}
-            disabled={isListening}
           >
             <View style={[styles.micIconContainer, isListening && styles.micIconContainerActive]}>
               <IconSymbol
@@ -148,6 +231,11 @@ export default function InputScreen() {
             {isListening && (
               <Text style={styles.micButtonSubtext}>
                 Speak clearly into your microphone
+              </Text>
+            )}
+            {!isListening && (
+              <Text style={styles.micButtonSubtext}>
+                Tap to stop when done
               </Text>
             )}
           </TouchableOpacity>
@@ -168,7 +256,7 @@ export default function InputScreen() {
           />
         </TouchableOpacity>
 
-        {Platform.OS !== 'web' && mode === 'speak' && (
+        {mode === 'speak' && (
           <View style={styles.infoBox}>
             <IconSymbol
               ios_icon_name="info.circle.fill"
@@ -177,7 +265,7 @@ export default function InputScreen() {
               color={colors.primary}
             />
             <Text style={styles.infoText}>
-              Speech recognition works best on web browsers. On mobile, please use the text input.
+              Tap the microphone button and speak clearly. The app will convert your speech to text automatically.
             </Text>
           </View>
         )}
@@ -284,6 +372,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     opacity: 0.9,
+    marginTop: 4,
   },
   translateButton: {
     backgroundColor: colors.primary,
